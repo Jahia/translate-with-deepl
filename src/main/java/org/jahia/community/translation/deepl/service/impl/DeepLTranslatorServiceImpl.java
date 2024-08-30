@@ -42,6 +42,7 @@ import java.util.MissingResourceException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -72,6 +73,8 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
     private Translator translator;
     private final Map<String, String> targetLanguages = new HashMap<>();
     private boolean checkPendingModifications = true;
+
+    private enum PropertyAction {TRANSLATE, COPY, IGNORE}
 
     @Activate
     public void activate(Map<String, ?> properties) {
@@ -182,15 +185,25 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         }
         while (properties.hasNext()) {
             final Property property = properties.nextProperty();
-            if (!isTranslatableProperty(property)) continue;
-            try {
-                final String key = node.getPath() + SLASH + property.getName();
-                final String stringValue = StringUtils.trimToNull(property.getValue().getString());
-                if (stringValue == null) continue;
-                data.trackText(key, stringValue);
-            } catch (RepositoryException e) {
-                logger.error("", e);
+            switch (getPropertyAction(property)) {
+                case TRANSLATE:
+                    trackProperty(property, node, data::trackText);
+                    break;
+                case COPY:
+                    trackProperty(property, node, data::trackCopiedValue);
+                    break;
+                case IGNORE:
             }
+        }
+    }
+
+    private void trackProperty(Property property, JCRNodeWrapper node, BiConsumer<String, String> tracker) {
+        try {
+            final String key = node.getPath() + SLASH + property.getName();
+            final String stringValue = StringUtils.trimToNull(property.getValue().getString());
+            if (stringValue != null) tracker.accept(key, stringValue);
+        } catch (RepositoryException e) {
+            logger.error("", e);
         }
     }
 
@@ -225,7 +238,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         if (translator == null) {
             throw new IllegalStateException("The translator is not initialized");
         }
-        if (!data.hasTextToTranslate()) {
+        if (!data.hasTextToWrite()) {
             return null;
         }
 
@@ -301,23 +314,39 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         }
     }
 
-    private boolean isTranslatableProperty(Property property) {
+    private PropertyAction getPropertyAction(Property property) {
         final ExtendedPropertyDefinition definition;
         try {
             definition = (ExtendedPropertyDefinition) property.getDefinition();
         } catch (RepositoryException e) {
             logger.error("", e);
-            return false;
+            return PropertyAction.IGNORE;
         }
 
-        return definition.isInternationalized()
-                && !definition.isMultiple()
-                && definition.getRequiredType() == PropertyType.STRING
+        if (!definition.isInternationalized()
+                || definition.isMultiple()
+                || definition.isHidden()
+                || definition.isProtected()) {
+            return PropertyAction.IGNORE;
+        }
+
+        if (definition.getRequiredType() == PropertyType.STRING
                 && !(definition.getSelector() == SelectorType.CHOICELIST)
                 && !(definition.getSelector() == SelectorType.CRON)
-                && !(definition.getSelector() == SelectorType.TAG)
-                && !definition.isHidden()
-                && !definition.isProtected();
+                && !(definition.getSelector() == SelectorType.TAG)) {
+            return PropertyAction.TRANSLATE;
+        }
+
+        if (definition.getRequiredType() == PropertyType.STRING
+                && definition.getSelector() == SelectorType.CHOICELIST) {
+            return PropertyAction.COPY;
+        }
+
+        if (definition.getRequiredType() == PropertyType.WEAKREFERENCE) {
+            return PropertyAction.COPY;
+        }
+
+        return PropertyAction.IGNORE;
     }
 
     private String getText(String key, Locale responseLocale, Object... args) {

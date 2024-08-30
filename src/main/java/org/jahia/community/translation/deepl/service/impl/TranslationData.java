@@ -16,9 +16,18 @@ public class TranslationData {
 
     private final Map<String, String> texts = new HashMap<>();
     private final Map<String, String> duplicates = new HashMap<>();
+    private final Map<String, String> copiedReferences = new HashMap<>();
 
     public boolean hasTextToTranslate() {
         return !MapUtils.isEmpty(texts);
+    }
+
+    public boolean hasTextToCopy() {
+        return !MapUtils.isEmpty(copiedReferences);
+    }
+
+    public boolean hasTextToWrite() {
+        return hasTextToTranslate() || hasTextToCopy();
     }
 
     public Map<String, String> getTexts() {
@@ -38,6 +47,12 @@ public class TranslationData {
 
     public Map<String, String> completeTranslations(Map<String, String> translations) {
         duplicates.forEach((key, ref) -> translations.put(key, translations.get(ref)));
+        translations.putAll(copiedReferences);
         return translations;
     }
+
+    public void trackCopiedValue(String key, String text) {
+        copiedReferences.put(key, text);
+    }
+
 }
