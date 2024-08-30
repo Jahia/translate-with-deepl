@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_API_KEY;
+import static org.jahia.community.translation.deepl.DeeplConstants.PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_PREFIX_TARGET_LANGUAGES;
 import static org.jahia.community.translation.deepl.DeeplConstants.SERVICE_CONFIG_FILE_FULLNAME;
 import static org.jahia.community.translation.deepl.DeeplConstants.SERVICE_CONFIG_FILE_NAME;
@@ -70,6 +71,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
 
     private Translator translator;
     private final Map<String, String> targetLanguages = new HashMap<>();
+    private boolean checkPendingModifications = true;
 
     @Activate
     public void activate(Map<String, ?> properties) {
@@ -84,6 +86,9 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         logger.debug("{} = {}", PROP_API_KEY, authKey);
         translator = initializeTranslator(authKey);
         if (translator == null) return;
+
+        final String doNotConsiderPublicationStatus = (String) properties.getOrDefault(PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS, null);
+        checkPendingModifications = !Boolean.parseBoolean(doNotConsiderPublicationStatus);
 
         properties.entrySet().stream()
                 .filter(e -> e.getKey().startsWith(PROP_PREFIX_TARGET_LANGUAGES))
@@ -166,7 +171,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
 
     private void analyzeNode(JCRNodeWrapper node, TranslationData data) {
         if (!isTranslatableNode(node)) return;
-        if (!hasPendingModifications(node)) return;
+        if (checkPendingModifications && !hasPendingModifications(node)) return;
 
         final PropertyIterator properties;
         try {
