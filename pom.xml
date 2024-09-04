@@ -10,14 +10,14 @@
     <groupId>org.jahia.community.modules</groupId>
     <artifactId>translate-with-deepl</artifactId>
     <name>Translate with DeepL</name>
-    <version>1.1.1-SNAPSHOT</version>
+    <version>1.2.0</version>
     <packaging>bundle</packaging>
     <description>UI to get the content translated by DeepL</description>
     <scm>
         <connection>scm:git:git@github.com:Jahia/translate-with-deepl.git</connection>
         <developerConnection>scm:git:git@github.com:Jahia/translate-with-deepl.git</developerConnection>
         <url>https://github.com/Jahia/translate-with-deepl</url>
-        <tag>HEAD</tag>
+        <tag>translate-with-deepl-1.2.0</tag>
     </scm>
 
     <properties>
