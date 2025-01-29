@@ -259,7 +259,8 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         });
         final List<TextResult> results;
         try {
-            results = translator.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
+            if (srcTexts.isEmpty()) results = new ArrayList<>();
+            else results = translator.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
         } catch (DeepLException | InterruptedException e) {
             logger.error("Failed to translate content", e);
             return null;
