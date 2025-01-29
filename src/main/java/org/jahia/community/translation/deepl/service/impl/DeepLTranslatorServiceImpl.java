@@ -2,6 +2,7 @@ package org.jahia.community.translation.deepl.service.impl;
 
 import com.deepl.api.DeepLException;
 import com.deepl.api.TextResult;
+import com.deepl.api.TextTranslationOptions;
 import com.deepl.api.Translator;
 import com.deepl.api.TranslatorOptions;
 import org.apache.commons.collections.MapUtils;
@@ -50,6 +51,7 @@ import java.util.stream.IntStream;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_API_KEY;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_PREFIX_TARGET_LANGUAGES;
+import static org.jahia.community.translation.deepl.DeeplConstants.PROP_USE_HTML_TAG_HANDLING;
 import static org.jahia.community.translation.deepl.DeeplConstants.SERVICE_CONFIG_FILE_FULLNAME;
 import static org.jahia.community.translation.deepl.DeeplConstants.SERVICE_CONFIG_FILE_NAME;
 import static org.jahia.community.translation.deepl.DeeplConstants.SUBTREE_ITERABLE_TYPES;
@@ -73,6 +75,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
     private Translator translator;
     private final Map<String, String> targetLanguages = new HashMap<>();
     private boolean checkPendingModifications = true;
+    private TextTranslationOptions textTranslationOptions;
 
     private enum PropertyAction {TRANSLATE, COPY, IGNORE}
 
@@ -92,6 +95,9 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
 
         final String doNotConsiderPublicationStatus = (String) properties.getOrDefault(PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS, null);
         checkPendingModifications = !Boolean.parseBoolean(doNotConsiderPublicationStatus);
+        final String useHtmlTagHandling = (String) properties.getOrDefault(PROP_USE_HTML_TAG_HANDLING, null);
+        if (Boolean.parseBoolean(useHtmlTagHandling)) textTranslationOptions = new TextTranslationOptions().setTagHandling("html");
+        else textTranslationOptions = null;
 
         properties.entrySet().stream()
                 .filter(e -> e.getKey().startsWith(PROP_PREFIX_TARGET_LANGUAGES))
@@ -253,7 +259,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         });
         final List<TextResult> results;
         try {
-            results = translator.translateText(srcTexts, srcLanguage, destDeepLLanguage);
+            results = translator.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
         } catch (DeepLException | InterruptedException e) {
             logger.error("Failed to translate content", e);
             return null;
