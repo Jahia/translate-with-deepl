@@ -1221,6 +1221,14 @@
     react-iframe "^1.8.0"
     rxjs "^6.5.3"
 
+"@jahia/webpack-config@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@jahia/webpack-config/-/webpack-config-1.1.0.tgz#629b3dd0dadf52a757d52e4a42a673151e031a19"
+  integrity sha512-3rSlzpPCLyFUKbmMw0tKH2eIjY2pn66xN6MJDK7+cqY+kWNFFOvBVdILm/G8PhJ3hejmVTKhQZRe3C9imFzxkw==
+  dependencies:
+    camelcase "5"
+    semver "^7.4.0"
+
 "@jest/console@^27.5.1":
   version "27.5.1"
   resolved "https://registry.yarnpkg.com/@jest/console/-/console-27.5.1.tgz#260fe7239602fe5130a94f1aa386eff54b014bba"
@@ -2688,7 +2696,7 @@ camelcase-keys@^6.2.2:
     map-obj "^4.0.0"
     quick-lru "^4.0.1"
 
-camelcase@^5.3.1:
+camelcase@5, camelcase@^5.3.1:
   version "5.3.1"
   resolved "https://registry.yarnpkg.com/camelcase/-/camelcase-5.3.1.tgz#e3c9b31569e106811df242f715725a1f4c494320"
   integrity sha512-L28STB170nwWS63UjtlEOE3dldQApaJXZkOI1uMFfzf3rRuPegHaHesyee+YxQ+W6SvRDQV6UrdOdRiR153wJg==
@@ -7528,6 +7536,11 @@ semver@^7.3.2, semver@^7.3.4, semver@^7.3.7, semver@^7.5.3, semver@^7.5.4:
   integrity sha512-EnwXhrlwXMk9gKu5/flx5sv/an57AkRplG3hTK68W7FRDN+k+OWBj65M7719OkA82XLBxrcX0KSHj+X5COhOVg==
   dependencies:
     lru-cache "^6.0.0"
+
+semver@^7.4.0:
+  version "7.6.3"
+  resolved "https://registry.yarnpkg.com/semver/-/semver-7.6.3.tgz#980f7b5550bc175fb4dc09403085627f9eb33143"
+  integrity sha512-oVekP1cKtI+CTDvHWYFUcMtsK/00wmAEfyqKfNdARm8u1wNVhSgaX7A8d4UuIlUI5e84iEwOhs7ZPYRmzU9U6A==
 
 serialize-javascript@^6.0.0, serialize-javascript@^6.0.1:
   version "6.0.2"
