@@ -3,7 +3,8 @@ const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPl
 const {CleanWebpackPlugin} = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
-const shared = require('./webpack.shared');
+const getModuleFederationConfig = require('@jahia/webpack-config/getModuleFederationConfig');
+const packageJson = require('./package.json');
 const moonstone = require("@jahia/moonstone/dist/rulesconfig-wp");
 
 module.exports = (env, argv) => {
@@ -79,19 +80,11 @@ module.exports = (env, argv) => {
             ]
         },
         plugins: [
-            new ModuleFederationPlugin({
-                name: "translationDeepl",
-                library: { type: "assign", name: "appShell.remotes.translationDeepl" },
-                filename: "remoteEntry.js",
+            new ModuleFederationPlugin(getModuleFederationConfig(packageJson, {
                 exposes: {
                     './init': './src/javascript/init'
-                },
-                remotes: {
-                    '@jahia/app-shell': 'appShellRemote',
-                    '@jahia/content-editor': 'appShell.remotes.contentEditor'
-                },
-                shared
-            }),
+                }
+            })),
             new CleanWebpackPlugin({verbose: false}),
             new CopyWebpackPlugin({patterns: [{from: './package.json', to: ''}]}),        ],
         mode: 'development'
