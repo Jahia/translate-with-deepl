@@ -1,10 +1,10 @@
 package org.jahia.community.translation.deepl.service.impl;
 
+import com.deepl.api.DeepLClient;
+import com.deepl.api.DeepLClientOptions;
 import com.deepl.api.DeepLException;
 import com.deepl.api.TextResult;
 import com.deepl.api.TextTranslationOptions;
-import com.deepl.api.Translator;
-import com.deepl.api.TranslatorOptions;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jahia.api.Constants;
@@ -72,7 +72,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
     };
     private static final Predicate<JCRNodeWrapper> ALL_NODES_PREDICATE = node -> Boolean.TRUE;
 
-    private Translator translator;
+    private DeepLClient deepLClient;
     private final Map<String, String> targetLanguages = new HashMap<>();
     private boolean checkPendingModifications = true;
     private TextTranslationOptions textTranslationOptions;
@@ -81,7 +81,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
 
     @Activate
     public void activate(Map<String, ?> properties) {
-        translator = null;
+        deepLClient = null;
         targetLanguages.clear();
         if (properties == null) {
             logger.error("Missing configurations: {}", SERVICE_CONFIG_FILE_FULLNAME);
@@ -90,8 +90,8 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
 
         final String authKey = (String) properties.getOrDefault(PROP_API_KEY, null);
         logger.debug("{} = {}", PROP_API_KEY, authKey);
-        translator = initializeTranslator(authKey);
-        if (translator == null) return;
+        deepLClient = initializeClient(authKey);
+        if (deepLClient == null) return;
 
         final String doNotConsiderPublicationStatus = (String) properties.getOrDefault(PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS, null);
         checkPendingModifications = !Boolean.parseBoolean(doNotConsiderPublicationStatus);
@@ -105,13 +105,14 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
 
     }
 
-    private Translator initializeTranslator(String authKey) {
+    private DeepLClient initializeClient(String authKey) {
         if (StringUtils.isBlank(authKey)) {
             logger.error("{} not defined. Please add it to {}", PROP_API_KEY, SERVICE_CONFIG_FILE_FULLNAME);
             return null;
         }
 
-        final TranslatorOptions options = new TranslatorOptions().setMaxRetries(3).setTimeout(Duration.ofSeconds(3));
+        final DeepLClientOptions options = new DeepLClientOptions();
+        options.setMaxRetries(3).setTimeout(Duration.ofSeconds(3));
 
         final String proxyHost = System.getProperty("https.proxyHost");
         final String proxyPort = System.getProperty("https.proxyPort");
@@ -121,7 +122,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
             options.setProxy(proxy);
         }
 
-        return new Translator(authKey, options);
+        return new DeepLClient(authKey, options);
     }
 
     @Override
@@ -241,7 +242,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
     }
 
     private Map<String, String> generateTranslations(TranslationData data, String srcLanguage, String destLanguage) {
-        if (translator == null) {
+        if (deepLClient == null) {
             throw new IllegalStateException("The translator is not initialized");
         }
         if (!data.hasTextToWrite()) {
@@ -260,7 +261,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         final List<TextResult> results;
         try {
             if (srcTexts.isEmpty()) results = new ArrayList<>();
-            else results = translator.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
+            else results = deepLClient.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
         } catch (DeepLException | InterruptedException e) {
             logger.error("Failed to translate content", e);
             return null;
