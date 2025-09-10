@@ -103,6 +103,10 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
                 .filter(e -> e.getKey().startsWith(PROP_PREFIX_TARGET_LANGUAGES))
                 .forEach(e -> targetLanguages.put(e.getKey().substring(PROP_PREFIX_TARGET_LANGUAGES.length()), (String) e.getValue()));
 
+        final String glossaryID = (String) properties.getOrDefault("translation.deepl.textTranslationOptions.glossaryID", null);
+        if (StringUtils.isNotBlank(glossaryID)) {
+            setTextTranslationOption(opt -> opt.setGlossaryId(glossaryID));
+        }
     }
 
     private void setTextTranslationOption(Consumer<TextTranslationOptions> consumer) {
@@ -266,7 +270,10 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         final List<TextResult> results;
         try {
             if (srcTexts.isEmpty()) results = new ArrayList<>();
-            else results = deepLClient.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
+            else {
+                logger.debug("Translated {}->{} with the glossary {}", srcLanguage, destDeepLLanguage, textTranslationOptions.getGlossaryId());
+                results = deepLClient.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
+            }
         } catch (DeepLException | InterruptedException e) {
             logger.error("Failed to translate content", e);
             return null;
