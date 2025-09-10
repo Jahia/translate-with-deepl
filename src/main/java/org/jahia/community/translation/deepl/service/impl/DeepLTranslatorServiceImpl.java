@@ -44,6 +44,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -96,13 +97,17 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         final String doNotConsiderPublicationStatus = (String) properties.getOrDefault(PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS, null);
         checkPendingModifications = !Boolean.parseBoolean(doNotConsiderPublicationStatus);
         final String useHtmlTagHandling = (String) properties.getOrDefault(PROP_USE_HTML_TAG_HANDLING, null);
-        if (Boolean.parseBoolean(useHtmlTagHandling)) textTranslationOptions = new TextTranslationOptions().setTagHandling("html");
-        else textTranslationOptions = null;
+        if (Boolean.parseBoolean(useHtmlTagHandling)) setTextTranslationOption(o -> o.setTagHandling("html"));
 
         properties.entrySet().stream()
                 .filter(e -> e.getKey().startsWith(PROP_PREFIX_TARGET_LANGUAGES))
                 .forEach(e -> targetLanguages.put(e.getKey().substring(PROP_PREFIX_TARGET_LANGUAGES.length()), (String) e.getValue()));
 
+    }
+
+    private void setTextTranslationOption(Consumer<TextTranslationOptions> consumer) {
+        if (textTranslationOptions == null) textTranslationOptions = new TextTranslationOptions();
+        consumer.accept(textTranslationOptions);
     }
 
     private DeepLClient initializeClient(String authKey) {
