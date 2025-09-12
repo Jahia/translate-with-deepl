@@ -77,6 +77,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
     private final Map<String, String> targetLanguages = new HashMap<>();
     private boolean checkPendingModifications = true;
     private TextTranslationOptions textTranslationOptions;
+    private TextTranslationOptions textTranslationOptionsNoGlossary;
 
     private enum PropertyAction {TRANSLATE, COPY, IGNORE}
 
@@ -105,13 +106,21 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
 
         final String glossaryID = (String) properties.getOrDefault("translation.deepl.textTranslationOptions.glossaryID", null);
         if (StringUtils.isNotBlank(glossaryID)) {
-            setTextTranslationOption(opt -> opt.setGlossaryId(glossaryID));
+            setTextTranslationOption(opt -> opt.setGlossaryId(glossaryID), true);
         }
     }
 
     private void setTextTranslationOption(Consumer<TextTranslationOptions> consumer) {
+        setTextTranslationOption(consumer, false);
+    }
+
+    private void setTextTranslationOption(Consumer<TextTranslationOptions> consumer, boolean isGlossarySettings) {
         if (textTranslationOptions == null) textTranslationOptions = new TextTranslationOptions();
         consumer.accept(textTranslationOptions);
+        if (!isGlossarySettings) {
+            if (textTranslationOptionsNoGlossary == null) textTranslationOptionsNoGlossary = new TextTranslationOptions();
+            consumer.accept(textTranslationOptionsNoGlossary);
+        }
     }
 
     private DeepLClient initializeClient(String authKey) {
@@ -267,12 +276,24 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
             keys.add(k);
             srcTexts.add(v);
         });
-        final List<TextResult> results;
+        final List<TextResult> results = new ArrayList<>();
         try {
-            if (srcTexts.isEmpty()) results = new ArrayList<>();
-            else {
-                logger.debug("Translated {}->{} with the glossary {}", srcLanguage, destDeepLLanguage, textTranslationOptions.getGlossaryId());
-                results = deepLClient.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
+            if (!srcTexts.isEmpty()) {
+                final String glossaryId = textTranslationOptions.getGlossaryId();
+                logger.debug("Translated {}->{} with the glossary {}", srcLanguage, destDeepLLanguage, glossaryId);
+                try {
+                    final List<TextResult> translatedTexts = deepLClient.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
+                    results.addAll(translatedTexts);
+                } catch (DeepLException e) {
+                    final String message = e.getMessage();
+                    if (StringUtils.isNotBlank(glossaryId) && StringUtils.contains(message, glossaryId)) {
+                        logger.debug("Error related to the glossary, redoing the translation without", e);
+                        final List<TextResult> translatedTexts = deepLClient.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptionsNoGlossary);
+                        results.addAll(translatedTexts);
+                    } else {
+                        throw e;
+                    }
+                }
             }
         } catch (DeepLException | InterruptedException e) {
             logger.error("Failed to translate content", e);
