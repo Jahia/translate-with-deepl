@@ -90,7 +90,6 @@
                             javax.servlet.http;version="[3.0,4)",
                             javax.servlet;version="[3.0,4)",
                             org.apache.avalon.framework.logger;resolution:=optional,
-                            org.apache.commons.codec.binary;version="[1.19,2)";resolution:=optional,
                             org.apache.commons.collections;version="[3.2,4)",
                             org.apache.commons.lang;version="[2.6,3)",
                             org.apache.log4j;resolution:=optional,
