@@ -54,8 +54,8 @@ public class GlossaryManager {
 
     private final boolean isPermanentGlossary;
     private String glossaryID;
+    private final Map<String, Set<String>> glossaryLanguages = new HashMap<>();
     private final DeepLClient deepLClient;
-    private final Map<String, Set<String>> supportedLanguages = new HashMap<>();
 
     public GlossaryManager(String configuredID, BiConsumer<Consumer<TextTranslationOptions>, Boolean> setTextTranslationOption, DeepLClient deepLClient) {
         isPermanentGlossary = StringUtils.isNotBlank(configuredID);
@@ -63,19 +63,37 @@ public class GlossaryManager {
         glossaryID = getOrCreateGlossary(configuredID);
         if (StringUtils.isNotBlank(glossaryID)) {
             setTextTranslationOption.accept(opt -> opt.setGlossaryId(glossaryID), true);
+            try {
+                deepLClient.getMultilingualGlossary(glossaryID).getDictionaries()
+                        .forEach(dict -> trackGlossaryLanguagePair(dict.getSourceLanguageCode(), dict.getTargetLanguageCode()));
+            } catch (DeepLException | InterruptedException e) {
+                logger.error("", e);
+            }
         }
     }
 
     public TextTranslationOptions getTextTranslationOptions(String srcLanguage, String destLanguage, TextTranslationOptions options, TextTranslationOptions optionsNoGlossary) {
-        final Boolean useGlossary = Optional.ofNullable(supportedLanguages.get(asGlossaryLang(srcLanguage)))
-                .map(langs -> langs.contains(asGlossaryLang(destLanguage)))
-                .orElse(false);
+        final Boolean useGlossary = isValidLanguagePair(srcLanguage, destLanguage, glossaryLanguages);
         logger.debug("Translation {}->{} , useGlossary: {}", srcLanguage, destLanguage, useGlossary);
         return useGlossary ? options : optionsNoGlossary;
     }
 
     private String asGlossaryLang(String lang) {
-        return StringUtils.substring(lang, 0, 2);
+        return StringUtils.substring(lang, 0, 2).toLowerCase();
+    }
+
+    private void trackGlossaryLanguagePair(String sourceLang, String targetLang) {
+        trackLanguagePair(sourceLang, targetLang, glossaryLanguages);
+    }
+
+    private void trackLanguagePair(String sourceLang, String targetLang, Map<String, Set<String>> map) {
+        map.computeIfAbsent(sourceLang.toLowerCase(), l -> new HashSet<>()).add(targetLang.toLowerCase());
+    }
+
+    private boolean isValidLanguagePair(String sourceLang, String targetLang, Map<String, Set<String>> map) {
+        return Optional.ofNullable(glossaryLanguages.get(asGlossaryLang(sourceLang)))
+                .map(langs -> langs.contains(asGlossaryLang(targetLang)))
+                .orElse(false);
     }
 
     public void refreshGlossary() {
@@ -83,7 +101,7 @@ public class GlossaryManager {
     }
 
     public void recreateGlossary() {
-        supportedLanguages.clear();
+        glossaryLanguages.clear();
         if (isPermanentGlossary) {
             logger.debug("Emptyting the glossary");
             try {
@@ -241,7 +259,7 @@ public class GlossaryManager {
         glossaryEntryNode.saveSession();
     }
 
-    private void processSimpleEntryNode(JCRNodeWrapper glossaryEntryNode, JCRFileNode glossaryFile, AtomicReference<String> glossaryID) throws RepositoryException, DeepLException, InterruptedException, IOException {
+    private void processSimpleEntryNode(JCRNodeWrapper glossaryEntryNode, JCRFileNode glossaryFile, AtomicReference<String> glossaryID) throws DeepLException, InterruptedException, IOException {
         logger.debug("Processing a simple entry: {}", glossaryEntryNode.getCanonicalPath());
         final String sourceLang = glossaryEntryNode.getPropertyAsString(PROP_SRC_LANG);
         final String targetLang = glossaryEntryNode.getPropertyAsString(PROP_TARGET_LANG);
@@ -252,7 +270,7 @@ public class GlossaryManager {
         return IOUtils.toString(glossaryFile.getFileContent().downloadFile(), StandardCharsets.UTF_8);
     }
 
-    private void processMultiLangEntryNode(JCRNodeWrapper glossaryEntryNode, JCRFileNode glossaryFile, AtomicReference<String> glossaryID) throws RepositoryException, IOException {
+    private void processMultiLangEntryNode(JCRNodeWrapper glossaryEntryNode, JCRFileNode glossaryFile, AtomicReference<String> glossaryID) throws IOException {
         logger.debug("Processing a multilang entry: {}", glossaryEntryNode.getCanonicalPath());
         final InputStream inputStream = glossaryFile.getFileContent().downloadFile();
         final InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
@@ -306,6 +324,6 @@ public class GlossaryManager {
             deepLClient.replaceMultilingualGlossaryDictionaryFromCsv(glossaryID.get(), sourceLang, targetLang, csv);
             logger.info("Updating the glossary for {}->{}", sourceLang, targetLang);
         }
-        supportedLanguages.computeIfAbsent(sourceLang, l -> new HashSet<>()).add(targetLang);
+        trackGlossaryLanguagePair(sourceLang, targetLang);
     }
 }
