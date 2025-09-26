@@ -34,6 +34,11 @@
             <artifactId>deepl-java</artifactId>
             <version>1.10.3</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.14.1</version>
+        </dependency>
     </dependencies>
 
     <repositories>
@@ -64,6 +69,64 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Import-Package>
+                            javax.crypto.spec;resolution:=optional,
+                            javax.crypto;resolution:=optional,
+                            javax.jcr.nodetype;version="[2.0,3)",
+                            javax.jcr.observation;version="[2.0,3)",
+                            javax.jcr;version="[2.0,3)",
+                            javax.naming.directory;resolution:=optional,
+                            javax.naming.ldap;resolution:=optional,
+                            javax.naming;resolution:=optional,
+                            javax.net.ssl;resolution:=optional,
+                            javax.net;resolution:=optional,
+                            javax.security.auth.x500;resolution:=optional,
+                            javax.servlet.http;version="[3.0,4)",
+                            javax.servlet;version="[3.0,4)",
+                            org.apache.avalon.framework.logger;resolution:=optional,
+                            org.apache.commons.codec.binary;version="[1.19,2)";resolution:=optional,
+                            org.apache.commons.collections;version="[3.2,4)",
+                            org.apache.commons.lang;version="[2.6,3)",
+                            org.apache.log4j;resolution:=optional,
+                            org.apache.log;resolution:=optional,
+                            org.apache.naming.java,
+                            org.ietf.jgss;resolution:=optional,
+                            org.jahia.ajax.gwt.client.widget.toolbar.action,
+                            org.jahia.bin,
+                            org.jahia.data.templates,
+                            org.jahia.defaults.config.spring,
+                            org.jahia.exceptions,
+                            org.jahia.osgi,
+                            org.jahia.services,
+                            org.jahia.services.content,
+                            org.jahia.services.content.decorator,
+                            org.jahia.services.content.nodetypes,
+                            org.jahia.services.render,
+                            org.jahia.services.sites,
+                            org.jahia.services.uicomponents.bean,
+                            org.jahia.services.uicomponents.bean.editmode,
+                            org.jahia.services.uicomponents.bean.toolbar,
+                            org.jahia.services.usermanager,
+                            org.jahia.utils,
+                            org.jahia.utils.i18n,
+                            org.json,
+                            org.osgi.framework;version="[1.8,2)",
+                            org.slf4j;version="[1.7,2)",
+                            org.springframework.beans.factory;version="[3.2,4)",
+                            org.springframework.beans;version="[3.2,4)",
+                            org.springframework.context;version="[3.2,4)",
+                            sun.misc;resolution:=optional,
+                            sun.nio.ch;resolution:=optional
+                        </Import-Package>
+                    </instructions>
+                </configuration>
+            </plugin>
             <plugin>
                 <artifactId>maven-clean-plugin</artifactId>
                 <version>3.1.0</version>
