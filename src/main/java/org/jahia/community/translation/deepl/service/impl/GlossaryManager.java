@@ -235,14 +235,17 @@ public class GlossaryManager {
         glossaryEntryNodes.forEach(glossaryEntryNode -> {
             try {
                 processEntryNode(glossaryEntryNode, id, ignoreLastSyncDate);
-            } catch (RepositoryException | DeepLException | InterruptedException | IOException e) {
+            } catch (RepositoryException | DeepLException | InterruptedException | IOException |
+                     GlossaryManagementException e) {
                 logger.error("", e);
+            } catch (MultiGlossaryManagementException e) {
+                e.getWrappedErrors().forEach(w -> logger.error("", w));
             }
         });
         return id.get();
     }
 
-    private void processEntryNode(JCRNodeWrapper glossaryEntryNode, AtomicReference<String> glossaryID, boolean ignoreLastSyncDate) throws RepositoryException, DeepLException, InterruptedException, IOException {
+    private void processEntryNode(JCRNodeWrapper glossaryEntryNode, AtomicReference<String> glossaryID, boolean ignoreLastSyncDate) throws DeepLException, GlossaryManagementException, MultiGlossaryManagementException, RepositoryException, IOException, InterruptedException {
         final JCRFileNode glossaryFile = (JCRFileNode) glossaryEntryNode.getProperty(PROP_GLOSSARY_REF).getNode();
         final JCRNodeWrapper contentNode = glossaryFile.getNode(Constants.JCR_CONTENT);
         if (!contentNode.isNodeType(DeeplConstants.NT_GLOSSARY_ENTRY_DATA)) {
@@ -270,7 +273,7 @@ public class GlossaryManager {
         glossaryEntryNode.saveSession();
     }
 
-    private void processSimpleEntryNode(JCRNodeWrapper glossaryEntryNode, JCRFileNode glossaryFile, AtomicReference<String> glossaryID) throws DeepLException, InterruptedException, IOException {
+    private void processSimpleEntryNode(JCRNodeWrapper glossaryEntryNode, JCRFileNode glossaryFile, AtomicReference<String> glossaryID) throws DeepLException, InterruptedException, IOException, GlossaryManagementException {
         logger.debug("Processing a simple entry: {}", glossaryEntryNode.getCanonicalPath());
         final String sourceLang = glossaryEntryNode.getPropertyAsString(PROP_SRC_LANG);
         final String targetLang = glossaryEntryNode.getPropertyAsString(PROP_TARGET_LANG);
@@ -281,7 +284,7 @@ public class GlossaryManager {
         return IOUtils.toString(glossaryFile.getFileContent().downloadFile(), StandardCharsets.UTF_8);
     }
 
-    private void processMultiLangEntryNode(JCRNodeWrapper glossaryEntryNode, JCRFileNode glossaryFile, AtomicReference<String> glossaryID) throws IOException {
+    private void processMultiLangEntryNode(JCRNodeWrapper glossaryEntryNode, JCRFileNode glossaryFile, AtomicReference<String> glossaryID) throws MultiGlossaryManagementException, IOException {
         logger.debug("Processing a multilang entry: {}", glossaryEntryNode.getCanonicalPath());
         final InputStream inputStream = glossaryFile.getFileContent().downloadFile();
         final InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
@@ -301,6 +304,7 @@ public class GlossaryManager {
             return;
         }
 
+        final AtomicReference<MultiGlossaryManagementException> errors = new AtomicReference<>();
         languages.forEach(srcLang ->
                 languages.stream()
                         .distinct()
@@ -316,19 +320,21 @@ public class GlossaryManager {
                                     }
                                 });
                                 pushGlossaryContent(srcLang, targetLang, data.toString(), glossaryID);
-                            } catch (IOException | DeepLException | InterruptedException e) {
-                                logger.error("", e);
+                            } catch (GlossaryManagementException | IOException | DeepLException | InterruptedException e) {
+                                if (errors.get() == null) errors.set(new MultiGlossaryManagementException(e));
+                                else errors.get().addError(e);
                             }
                         })
         );
+        if (errors.get() != null) throw errors.get();
     }
 
-    private void pushGlossaryContent(String sourceLang, String targetLang, String csv, AtomicReference<String> glossaryID) throws DeepLException, InterruptedException {
+    private void pushGlossaryContent(String sourceLang, String targetLang, String csv, AtomicReference<String> glossaryID) throws DeepLException, InterruptedException, GlossaryManagementException {
         if (StringUtils.isBlank(csv)) {
-            throw new IllegalArgumentException(String.format("Trying to push an empty CSV for %s->%s", sourceLang, targetLang));
+            throw new GlossaryManagementException(String.format("Trying to push an empty CSV for %s->%s", sourceLang, targetLang));
         }
         if (!isValidLanguagePair(sourceLang, targetLang, supportedGlossaryLanguages)) {
-            throw new IllegalArgumentException(String.format("Trying to push glossary content for languages which are not allowed in a glossary: %s->%s", sourceLang, targetLang));
+            throw new GlossaryManagementException(String.format("Trying to push glossary content for languages which are not allowed in a glossary: %s->%s", sourceLang, targetLang));
         }
         if (glossaryID.get() == null) {
             final MultilingualGlossaryInfo glossaryInfo = deepLClient.createMultilingualGlossaryFromCsv(DEFAULT_GLOSSARY_NAME, sourceLang, targetLang, csv);
