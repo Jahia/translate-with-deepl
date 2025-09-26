@@ -2,6 +2,7 @@ package org.jahia.community.translation.deepl.service.impl;
 
 import com.deepl.api.DeepLClient;
 import com.deepl.api.DeepLException;
+import com.deepl.api.GlossaryLanguagePair;
 import com.deepl.api.MultilingualGlossaryInfo;
 import com.deepl.api.TextTranslationOptions;
 import org.apache.commons.collections.CollectionUtils;
@@ -55,6 +56,7 @@ public class GlossaryManager {
     private final boolean isPermanentGlossary;
     private String glossaryID;
     private final Map<String, Set<String>> glossaryLanguages = new HashMap<>();
+    private final Map<String, Set<String>> supportedGlossaryLanguages = new HashMap<>();
     private final DeepLClient deepLClient;
 
     public GlossaryManager(String configuredID, BiConsumer<Consumer<TextTranslationOptions>, Boolean> setTextTranslationOption, DeepLClient deepLClient) {
@@ -70,6 +72,11 @@ public class GlossaryManager {
                 logger.error("", e);
             }
         }
+        try {
+            deepLClient.getGlossaryLanguages().forEach(this::trackSupportedGlossaryLanguagePair);
+        } catch (DeepLException | InterruptedException e) {
+            logger.error("", e);
+        }
     }
 
     public TextTranslationOptions getTextTranslationOptions(String srcLanguage, String destLanguage, TextTranslationOptions options, TextTranslationOptions optionsNoGlossary) {
@@ -84,6 +91,10 @@ public class GlossaryManager {
 
     private void trackGlossaryLanguagePair(String sourceLang, String targetLang) {
         trackLanguagePair(sourceLang, targetLang, glossaryLanguages);
+    }
+
+    private void trackSupportedGlossaryLanguagePair(GlossaryLanguagePair pair) {
+        trackLanguagePair(pair.getSourceLanguage(), pair.getTargetLanguage(), supportedGlossaryLanguages);
     }
 
     private void trackLanguagePair(String sourceLang, String targetLang, Map<String, Set<String>> map) {
@@ -315,6 +326,9 @@ public class GlossaryManager {
     private void pushGlossaryContent(String sourceLang, String targetLang, String csv, AtomicReference<String> glossaryID) throws DeepLException, InterruptedException {
         if (StringUtils.isBlank(csv)) {
             throw new IllegalArgumentException(String.format("Trying to push an empty CSV for %s->%s", sourceLang, targetLang));
+        }
+        if (!isValidLanguagePair(sourceLang, targetLang, supportedGlossaryLanguages)) {
+            throw new IllegalArgumentException(String.format("Trying to push glossary content for languages which are not allowed in a glossary: %s->%s", sourceLang, targetLang));
         }
         if (glossaryID.get() == null) {
             final MultilingualGlossaryInfo glossaryInfo = deepLClient.createMultilingualGlossaryFromCsv(DEFAULT_GLOSSARY_NAME, sourceLang, targetLang, csv);
