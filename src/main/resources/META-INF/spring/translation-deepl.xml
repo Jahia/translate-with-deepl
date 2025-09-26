@@ -19,5 +19,9 @@
         <!--property name="titleKey" value="label.translate@resources.translate-with-deepl"/-->
     </bean>
 
+    <bean class="org.jahia.community.translation.deepl.listeners.GlossarySetttingsListener" />
+    <bean class="org.jahia.community.translation.deepl.listeners.GlossaryEntryListener" />
+    <bean class="org.jahia.community.translation.deepl.listeners.GlossaryDataListener" />
+
     <bean class="org.jahia.community.translation.deepl.spring.SpringConfigExtender" />
 </beans>
