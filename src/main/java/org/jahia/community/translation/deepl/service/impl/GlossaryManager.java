@@ -26,7 +26,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -50,6 +55,7 @@ public class GlossaryManager {
     private final boolean isPermanentGlossary;
     private String glossaryID;
     private final DeepLClient deepLClient;
+    private final Map<String, Set<String>> supportedLanguages = new HashMap<>();
 
     public GlossaryManager(String configuredID, BiConsumer<Consumer<TextTranslationOptions>, Boolean> setTextTranslationOption, DeepLClient deepLClient) {
         isPermanentGlossary = StringUtils.isNotBlank(configuredID);
@@ -61,8 +67,15 @@ public class GlossaryManager {
     }
 
     public TextTranslationOptions getTextTranslationOptions(String srcLanguage, String destLanguage, TextTranslationOptions options, TextTranslationOptions optionsNoGlossary) {
-        if (true) return options;
-        else return optionsNoGlossary;
+        final Boolean useGlossary = Optional.ofNullable(supportedLanguages.get(asGlossaryLang(srcLanguage)))
+                .map(langs -> langs.contains(asGlossaryLang(destLanguage)))
+                .orElse(false);
+        logger.debug("Translation {}->{} , useGlossary: {}", srcLanguage, destLanguage, useGlossary);
+        return useGlossary ? options : optionsNoGlossary;
+    }
+
+    private String asGlossaryLang(String lang) {
+        return StringUtils.substring(lang, 0, 2);
     }
 
     public void refreshGlossary() {
@@ -70,6 +83,7 @@ public class GlossaryManager {
     }
 
     public void recreateGlossary() {
+        supportedLanguages.clear();
         if (isPermanentGlossary) {
             logger.debug("Emptyting the glossary");
             try {
@@ -88,7 +102,7 @@ public class GlossaryManager {
             try {
                 logger.debug("Deleting the glossary {}", glossaryID);
                 deepLClient.deleteMultilingualGlossary(glossaryID);
-                glossaryID = getOrCreateGlossary(null);
+                glossaryID = getOrCreateGlossary(null, true);
                 logger.debug("Created a new glossary {}", glossaryID);
             } catch (DeepLException | InterruptedException e) {
                 logger.error("", e);
@@ -292,5 +306,6 @@ public class GlossaryManager {
             deepLClient.replaceMultilingualGlossaryDictionaryFromCsv(glossaryID.get(), sourceLang, targetLang, csv);
             logger.info("Updating the glossary for {}->{}", sourceLang, targetLang);
         }
+        supportedLanguages.computeIfAbsent(sourceLang, l -> new HashSet<>()).add(targetLang);
     }
 }
