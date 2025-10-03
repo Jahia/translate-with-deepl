@@ -64,6 +64,9 @@ public class GlossaryManager {
         this.deepLClient = deepLClient;
         try {
             deepLClient.getGlossaryLanguages().forEach(this::trackSupportedGlossaryLanguagePair);
+            if (logger.isDebugEnabled()) {
+                supportedGlossaryLanguages.forEach(((src, targets) -> logger.debug("Supported glossary langs: {}=>{}", src, String.join(",", targets))));
+            }
         } catch (DeepLException | InterruptedException e) {
             logger.error("", e);
         }
