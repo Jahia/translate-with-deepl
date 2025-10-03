@@ -10,8 +10,8 @@
     - lastSync (date) protected
 
 [dplnt:simpleGlossaryEntry] > jnt:content, dplmix:glossaryEntry
-    - sourceLang (string) mandatory nofulltext
-    - targetLang (string) mandatory nofulltext
+    - sourceLang (string, choicelist[glossaryLangs,sort]) mandatory nofulltext
+    - targetLang (string, choicelist[glossaryLangs,sort]) mandatory nofulltext
 
 [dplnt:multiLangGlossaryEntry] > jnt:content, dplmix:glossaryEntry
 
