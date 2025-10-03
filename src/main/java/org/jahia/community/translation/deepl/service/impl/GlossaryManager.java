@@ -297,7 +297,13 @@ public class GlossaryManager {
         final List<CSVRecord> records = parser
                 .stream()
                 .collect(Collectors.toList());
-        final List<String> languages = parser.getHeaderNames();
+        final List<String> languages = parser.getHeaderNames().stream()
+                .filter(l -> {
+                    if (supportedGlossaryLanguages.containsKey(l)) return true;
+                    logger.error("Skipping column for language {} which is not supported in a glossary", l);
+                    return false;
+                })
+                .collect(Collectors.toList());
 
         if (languages.size() < 2) {
             logger.error("Unsufficient number of languages: {}", glossaryEntryNode.getCanonicalPath());
