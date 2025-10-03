@@ -101,8 +101,8 @@ public class GlossaryManager {
         map.computeIfAbsent(sourceLang.toLowerCase(), l -> new HashSet<>()).add(targetLang.toLowerCase());
     }
 
-    private boolean isValidLanguagePair(String sourceLang, String targetLang, Map<String, Set<String>> map) {
-        return Optional.ofNullable(glossaryLanguages.get(asGlossaryLang(sourceLang)))
+    private boolean isValidLanguagePair(String sourceLang, String targetLang, Map<String, Set<String>> mapping) {
+        return Optional.ofNullable(mapping.get(asGlossaryLang(sourceLang)))
                 .map(langs -> langs.contains(asGlossaryLang(targetLang)))
                 .orElse(false);
     }
