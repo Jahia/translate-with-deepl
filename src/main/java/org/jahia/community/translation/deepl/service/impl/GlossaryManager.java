@@ -62,6 +62,11 @@ public class GlossaryManager {
     public GlossaryManager(String configuredID, BiConsumer<Consumer<TextTranslationOptions>, Boolean> setTextTranslationOption, DeepLClient deepLClient) {
         isPermanentGlossary = StringUtils.isNotBlank(configuredID);
         this.deepLClient = deepLClient;
+        try {
+            deepLClient.getGlossaryLanguages().forEach(this::trackSupportedGlossaryLanguagePair);
+        } catch (DeepLException | InterruptedException e) {
+            logger.error("", e);
+        }
         glossaryID = getOrCreateGlossary(configuredID);
         if (StringUtils.isNotBlank(glossaryID)) {
             setTextTranslationOption.accept(opt -> opt.setGlossaryId(glossaryID), true);
@@ -71,11 +76,6 @@ public class GlossaryManager {
             } catch (DeepLException | InterruptedException e) {
                 logger.error("", e);
             }
-        }
-        try {
-            deepLClient.getGlossaryLanguages().forEach(this::trackSupportedGlossaryLanguagePair);
-        } catch (DeepLException | InterruptedException e) {
-            logger.error("", e);
         }
     }
 
