@@ -323,9 +323,16 @@ public class GlossaryManager {
                         .forEach(targetLang -> {
                             final StringBuilder data = new StringBuilder();
                             try (final CSVPrinter printer = new CSVPrinter(data, CSVFormat.DEFAULT)) {
+                                final Collection<String> srcTerms = new HashSet<>();
                                 records.forEach(srcLine -> {
                                     try {
-                                        printer.printRecord(srcLine.get(srcLang), srcLine.get(targetLang));
+                                        final String srcTerm = srcLine.get(srcLang);
+                                        final String targetTerm = srcLine.get(targetLang);
+                                        if (srcTerms.add(srcTerm)) {
+                                            printer.printRecord(srcTerm, targetTerm);
+                                        } else {
+                                            logger.debug("Skipping duplicate translation for {} : {}", srcTerm, targetTerm);
+                                        }
                                     } catch (IOException e) {
                                         logger.error("", e);
                                     }
