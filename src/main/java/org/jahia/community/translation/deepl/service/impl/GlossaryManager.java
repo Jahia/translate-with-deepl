@@ -326,8 +326,8 @@ public class GlossaryManager {
                                 final Collection<String> srcTerms = new HashSet<>();
                                 records.forEach(srcLine -> {
                                     try {
-                                        final String srcTerm = srcLine.get(srcLang);
-                                        final String targetTerm = srcLine.get(targetLang);
+                                        final String srcTerm = cleanText(srcLine.get(srcLang));
+                                        final String targetTerm = cleanText(srcLine.get(targetLang));
                                         if (srcTerms.add(srcTerm)) {
                                             printer.printRecord(srcTerm, targetTerm);
                                         } else {
@@ -367,5 +367,10 @@ public class GlossaryManager {
 
     public Collection<String> getGlossarySupportedLanguages() {
         return Collections.unmodifiableCollection(supportedGlossaryLanguages.keySet());
+    }
+
+    private String cleanText(String value) {
+        if (value == null) return null;
+        return value.replaceAll("\\h+", " ").trim();
     }
 }
