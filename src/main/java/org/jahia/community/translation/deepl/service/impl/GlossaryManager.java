@@ -86,7 +86,11 @@ public class GlossaryManager {
 
     public TextTranslationOptions getTextTranslationOptions(String srcLanguage, String destLanguage, TextTranslationOptions options, TextTranslationOptions optionsNoGlossary) {
         final Boolean useGlossary = isValidLanguagePair(srcLanguage, destLanguage, glossaryLanguages);
-        logger.debug("Translation {}->{} , useGlossary: {}", srcLanguage, destLanguage, useGlossary);
+        if (useGlossary) {
+            logger.debug("Translation {}->{} , useGlossary: {}, glossaryID: {}", srcLanguage, destLanguage, useGlossary, options.getGlossaryId());
+        } else {
+            logger.debug("Translation {}->{} , useGlossary: {}", srcLanguage, destLanguage, useGlossary);
+        }
         return useGlossary ? options : optionsNoGlossary;
     }
 
