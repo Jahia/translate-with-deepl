@@ -1,2 +1,21 @@
 <jnt = 'http://www.jahia.org/jahia/nt/1.0'>
 <jmix = 'http://www.jahia.org/jahia/mix/1.0'>
+<dplnt = 'http://www.jahia.org/deepl/nt/1.0'>
+<dplmix = 'http://www.jahia.org/deepl/mix/1.0'>
+
+[dplmix:glossaryEntryData] mixin
+
+[dplmix:glossaryEntry] > jmix:nolive mixin
+    - glossary (weakreference, picker[type='file']) mandatory < jnt:file
+    - lastSync (date) protected
+
+[dplnt:simpleGlossaryEntry] > jnt:content, dplmix:glossaryEntry
+    - sourceLang (string, choicelist[glossaryLangs,sort]) mandatory nofulltext
+    - targetLang (string, choicelist[glossaryLangs,sort]) mandatory nofulltext
+
+[dplnt:multiLangGlossaryEntry] > jnt:content, dplmix:glossaryEntry
+
+[dplnt:settings] > jnt:content, jmix:editorialContent, jmix:nolive
+    - defaultGlossary (string) nofulltext protected
+    - forceRecreation (boolean)
+    + * (dplmix:glossaryEntry) version

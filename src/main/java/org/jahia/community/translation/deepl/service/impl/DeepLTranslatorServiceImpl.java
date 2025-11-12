@@ -1,10 +1,10 @@
 package org.jahia.community.translation.deepl.service.impl;
 
+import com.deepl.api.DeepLClient;
+import com.deepl.api.DeepLClientOptions;
 import com.deepl.api.DeepLException;
 import com.deepl.api.TextResult;
 import com.deepl.api.TextTranslationOptions;
-import com.deepl.api.Translator;
-import com.deepl.api.TranslatorOptions;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.jahia.api.Constants;
@@ -22,6 +22,7 @@ import org.jahia.utils.i18n.Messages;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,12 +45,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_API_KEY;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS;
+import static org.jahia.community.translation.deepl.DeeplConstants.PROP_GLOSSARY_ID;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_PREFIX_TARGET_LANGUAGES;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_USE_HTML_TAG_HANDLING;
 import static org.jahia.community.translation.deepl.DeeplConstants.SERVICE_CONFIG_FILE_FULLNAME;
@@ -72,16 +75,18 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
     };
     private static final Predicate<JCRNodeWrapper> ALL_NODES_PREDICATE = node -> Boolean.TRUE;
 
-    private Translator translator;
+    private DeepLClient deepLClient;
     private final Map<String, String> targetLanguages = new HashMap<>();
     private boolean checkPendingModifications = true;
     private TextTranslationOptions textTranslationOptions;
+    private TextTranslationOptions textTranslationOptionsNoGlossary;
+    private GlossaryManager glossaryManager;
 
     private enum PropertyAction {TRANSLATE, COPY, IGNORE}
 
     @Activate
     public void activate(Map<String, ?> properties) {
-        translator = null;
+        deepLClient = null;
         targetLanguages.clear();
         if (properties == null) {
             logger.error("Missing configurations: {}", SERVICE_CONFIG_FILE_FULLNAME);
@@ -90,28 +95,48 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
 
         final String authKey = (String) properties.getOrDefault(PROP_API_KEY, null);
         logger.debug("{} = {}", PROP_API_KEY, authKey);
-        translator = initializeTranslator(authKey);
-        if (translator == null) return;
+        deepLClient = initializeClient(authKey);
+        if (deepLClient == null) return;
 
         final String doNotConsiderPublicationStatus = (String) properties.getOrDefault(PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS, null);
         checkPendingModifications = !Boolean.parseBoolean(doNotConsiderPublicationStatus);
         final String useHtmlTagHandling = (String) properties.getOrDefault(PROP_USE_HTML_TAG_HANDLING, null);
-        if (Boolean.parseBoolean(useHtmlTagHandling)) textTranslationOptions = new TextTranslationOptions().setTagHandling("html");
-        else textTranslationOptions = null;
+        if (Boolean.parseBoolean(useHtmlTagHandling)) setTextTranslationOption(o -> o.setTagHandling("html"));
 
         properties.entrySet().stream()
                 .filter(e -> e.getKey().startsWith(PROP_PREFIX_TARGET_LANGUAGES))
                 .forEach(e -> targetLanguages.put(e.getKey().substring(PROP_PREFIX_TARGET_LANGUAGES.length()), (String) e.getValue()));
 
+        final String glossaryID = (String) properties.getOrDefault(PROP_GLOSSARY_ID, null);
+        glossaryManager = new GlossaryManager(glossaryID, this::setTextTranslationOption, deepLClient);
     }
 
-    private Translator initializeTranslator(String authKey) {
+    @Deactivate
+    public void deactivate() {
+        glossaryManager = null;
+    }
+
+    private void setTextTranslationOption(Consumer<TextTranslationOptions> consumer) {
+        setTextTranslationOption(consumer, false);
+    }
+
+    private void setTextTranslationOption(Consumer<TextTranslationOptions> consumer, boolean isGlossarySettings) {
+        if (textTranslationOptions == null) textTranslationOptions = new TextTranslationOptions();
+        consumer.accept(textTranslationOptions);
+        if (!isGlossarySettings) {
+            if (textTranslationOptionsNoGlossary == null) textTranslationOptionsNoGlossary = new TextTranslationOptions();
+            consumer.accept(textTranslationOptionsNoGlossary);
+        }
+    }
+
+    private DeepLClient initializeClient(String authKey) {
         if (StringUtils.isBlank(authKey)) {
             logger.error("{} not defined. Please add it to {}", PROP_API_KEY, SERVICE_CONFIG_FILE_FULLNAME);
             return null;
         }
 
-        final TranslatorOptions options = new TranslatorOptions().setMaxRetries(3).setTimeout(Duration.ofSeconds(3));
+        final DeepLClientOptions options = new DeepLClientOptions();
+        options.setMaxRetries(3).setTimeout(Duration.ofSeconds(3));
 
         final String proxyHost = System.getProperty("https.proxyHost");
         final String proxyPort = System.getProperty("https.proxyPort");
@@ -121,7 +146,12 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
             options.setProxy(proxy);
         }
 
-        return new Translator(authKey, options);
+        return new DeepLClient(authKey, options);
+    }
+
+    @Override
+    public GlossaryManager getGlossaryManager() {
+        return glossaryManager;
     }
 
     @Override
@@ -241,7 +271,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
     }
 
     private Map<String, String> generateTranslations(TranslationData data, String srcLanguage, String destLanguage) {
-        if (translator == null) {
+        if (deepLClient == null) {
             throw new IllegalStateException("The translator is not initialized");
         }
         if (!data.hasTextToWrite()) {
@@ -260,7 +290,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         final List<TextResult> results;
         try {
             if (srcTexts.isEmpty()) results = new ArrayList<>();
-            else results = translator.translateText(srcTexts, srcLanguage, destDeepLLanguage, textTranslationOptions);
+            else results = deepLClient.translateText(srcTexts, srcLanguage, destDeepLLanguage, glossaryManager.getTextTranslationOptions(srcLanguage, destDeepLLanguage, textTranslationOptions, textTranslationOptionsNoGlossary));
         } catch (DeepLException | InterruptedException e) {
             logger.error("Failed to translate content", e);
             return null;
