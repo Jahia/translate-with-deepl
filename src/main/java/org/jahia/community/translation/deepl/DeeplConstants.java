@@ -9,6 +9,7 @@ public class DeeplConstants {
     public static final String PROP_API_KEY = "translation.deepl.api.key";
     public static final String PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS = "translation.deepl.doNotConsiderPublicationStatus";
     public static final String PROP_USE_HTML_TAG_HANDLING = "translation.deepl.textTranslationOptions.useHtmlTagHandling";
+    public static final String PROP_TAG_HANDLING_VERSION = PROP_USE_HTML_TAG_HANDLING + ".version";
     public static final String PROP_PREFIX_TARGET_LANGUAGES = "targetLanguages.";
     public static final String PROP_GLOSSARY_ID = "translation.deepl.textTranslationOptions.glossaryID";
 
