@@ -106,6 +106,7 @@
                             org.jahia.services.content,
                             org.jahia.services.content.decorator,
                             org.jahia.services.content.nodetypes,
+                            org.jahia.services.content.nodetypes.initializers,
                             org.jahia.services.render,
                             org.jahia.services.sites,
                             org.jahia.services.uicomponents.bean,
