@@ -32,7 +32,7 @@
         <dependency>
             <groupId>com.deepl.api</groupId>
             <artifactId>deepl-java</artifactId>
-            <version>1.10.3</version>
+            <version>1.14.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -106,6 +106,7 @@
                             org.jahia.services.content,
                             org.jahia.services.content.decorator,
                             org.jahia.services.content.nodetypes,
+                            org.jahia.services.content.nodetypes.initializers,
                             org.jahia.services.render,
                             org.jahia.services.sites,
                             org.jahia.services.uicomponents.bean,

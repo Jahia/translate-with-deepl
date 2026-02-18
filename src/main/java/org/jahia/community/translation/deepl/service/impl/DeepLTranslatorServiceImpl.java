@@ -54,6 +54,7 @@ import static org.jahia.community.translation.deepl.DeeplConstants.PROP_API_KEY;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_GLOSSARY_ID;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_PREFIX_TARGET_LANGUAGES;
+import static org.jahia.community.translation.deepl.DeeplConstants.PROP_TAG_HANDLING_VERSION;
 import static org.jahia.community.translation.deepl.DeeplConstants.PROP_USE_HTML_TAG_HANDLING;
 import static org.jahia.community.translation.deepl.DeeplConstants.SERVICE_CONFIG_FILE_FULLNAME;
 import static org.jahia.community.translation.deepl.DeeplConstants.SERVICE_CONFIG_FILE_NAME;
@@ -101,7 +102,11 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
         final String doNotConsiderPublicationStatus = (String) properties.getOrDefault(PROP_DO_NOT_CONSIDER_PUBLICATION_STATUS, null);
         checkPendingModifications = !Boolean.parseBoolean(doNotConsiderPublicationStatus);
         final String useHtmlTagHandling = (String) properties.getOrDefault(PROP_USE_HTML_TAG_HANDLING, null);
-        if (Boolean.parseBoolean(useHtmlTagHandling)) setTextTranslationOption(o -> o.setTagHandling("html"));
+        if (Boolean.parseBoolean(useHtmlTagHandling)) {
+            setTextTranslationOption(o -> o.setTagHandling("html"));
+            final String tagHandlingVersion = (String) properties.getOrDefault(PROP_TAG_HANDLING_VERSION, null);
+            setTextTranslationOption(o -> o.setTagHandlingVersion(Optional.ofNullable(tagHandlingVersion).orElse("v2")));
+        }
 
         properties.entrySet().stream()
                 .filter(e -> e.getKey().startsWith(PROP_PREFIX_TARGET_LANGUAGES))
